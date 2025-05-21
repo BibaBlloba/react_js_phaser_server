@@ -14,6 +14,11 @@ app.add_middleware(
 players = {}
 
 
+async def broadcast(message: dict):
+    for name, data in players.items():
+        await data['socket'].send_json(message)
+
+
 @app.websocket('/ws')
 async def websocket(
     websocket: WebSocket,
@@ -24,15 +29,14 @@ async def websocket(
         player_data = await websocket.receive_json()
         player_name = player_data['name']
 
-        for name, data in players.items():
-            await data['socket'].send_json(
-                {
-                    'type': 'player_connected',
-                    'name': player_name,
-                    'x': player_data['x'],
-                    'y': player_data['y'],
-                }
-            )
+        await broadcast(
+            {
+                'type': 'player_connected',
+                'name': player_name,
+                'x': player_data['x'],
+                'y': player_data['y'],
+            }
+        )
 
         players[player_name] = {
             'x': player_data['x'],
@@ -57,28 +61,29 @@ async def websocket(
         while True:
             message = await websocket.receive_json()
 
+            # if message['type'] == 'fire':
+            #     for
+
             players[player_name]['x'] = message.get('x', players[player_name]['x'])
             players[player_name]['y'] = message.get('y', players[player_name]['y'])
 
-            for name, data in players.items():
-                await data['socket'].send_json(
-                    {
-                        'type': 'player_update',
-                        'name': player_name,
-                        'x': players[player_name]['x'],
-                        'y': players[player_name]['y'],
-                    }
-                )
+            await broadcast(
+                {
+                    'type': 'player_update',
+                    'name': player_name,
+                    'x': players[player_name]['x'],
+                    'y': players[player_name]['y'],
+                }
+            )
 
     except WebSocketDisconnect:
         del players[player_name]
-        for name, data in players.items():
-            await data['socket'].send_json(
-                {
-                    'type': 'player_disconnected',
-                    'name': player_name,
-                }
-            )
+        await broadcast(
+            {
+                'type': 'player_disconnected',
+                'name': player_name,
+            }
+        )
 
 
 if __name__ == '__main__':
