@@ -61,8 +61,9 @@ async def websocket(
         while True:
             message = await websocket.receive_json()
 
-            # if message['type'] == 'fire':
-            #     for
+            if message['type'] == 'fire':
+                await broadcast(message)
+                continue
 
             players[player_name]['x'] = message.get('x', players[player_name]['x'])
             players[player_name]['y'] = message.get('y', players[player_name]['y'])
